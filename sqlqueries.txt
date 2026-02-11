@@ -1,0 +1,935 @@
+create database proj_food_delivery;
+use proj_food_delivery;
+
+-- Raw table creation
+CREATE TABLE couriers_raw (
+    courier_id VARCHAR(50),
+    courier_name VARCHAR(100),
+    vehicle_type VARCHAR(50),
+    phone VARCHAR(50),
+    city VARCHAR(100),
+    state VARCHAR(100),
+    is_active VARCHAR(4)
+);
+
+CREATE TABLE customers_raw (
+    customer_id VARCHAR(50),
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    gender VARCHAR(10),
+    email VARCHAR(150),
+    city VARCHAR(100),
+    state VARCHAR(100),
+    created_at VARCHAR(50)
+);
+
+CREATE TABLE order_items_raw (
+    order_item_id VARCHAR(50),
+    order_id VARCHAR(50),
+    menu_code VARCHAR(50),
+    quantity VARCHAR(50),
+    unit_price VARCHAR(50),
+    line_amount VARCHAR(50)
+);
+
+CREATE TABLE deliveries_raw (
+    delivery_id VARCHAR(50),
+    order_id VARCHAR(50),
+    courier_id VARCHAR(50),
+    assign_time VARCHAR(50),
+    drop_time VARCHAR(50),
+    distance_km VARCHAR(50)
+);
+
+
+CREATE TABLE orders_raw (
+    order_id VARCHAR(50),
+    customer_id VARCHAR(50),
+    restaurant_id VARCHAR(50),
+    order_datetime VARCHAR(50),
+    status VARCHAR(50),
+    city VARCHAR(100),
+    state VARCHAR(100)
+);
+
+CREATE TABLE restaurants_raw (
+    restaurant_id VARCHAR(50),
+    restaurant_name VARCHAR(150),
+    cuisine VARCHAR(100),
+    city VARCHAR(100),
+    state VARCHAR(100),
+    rating VARCHAR(50),
+    is_active VARCHAR(4)
+);
+
+SHOW VARIABLES LIKE 'local_infile';
+SET GLOBAL local_infile = 1;
+
+-- Loading Data from CSV files
+
+LOAD DATA LOCAL INFILE
+'C:/Users/User/Documents/project_3/food_delivery_capstone_v2/data/merged/couriers_merged.csv'
+INTO TABLE couriers_raw
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES
+(courier_id, courier_name, vehicle_type, phone, city, state, is_active);
+
+LOAD DATA LOCAL INFILE
+'C:/Users/User/Documents/project_3/food_delivery_capstone_v2/data/merged/customers_merged.csv'
+INTO TABLE customers_raw
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES
+(customer_id, first_name, last_name, gender, email, city, state, created_at);
+
+LOAD DATA LOCAL INFILE
+'C:/Users/User/Documents/project_3/food_delivery_capstone_v2/data/merged/restaurants_merged.csv'
+INTO TABLE restaurants_raw
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES
+(restaurant_id, restaurant_name, cuisine, city, state, rating, is_active);
+
+LOAD DATA LOCAL INFILE
+'C:/Users/User/Documents/project_3/food_delivery_capstone_v2/data/merged/orders_merged.csv'
+INTO TABLE orders_raw
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES
+(order_id, customer_id, restaurant_id, order_datetime, status, city, state);
+
+LOAD DATA LOCAL INFILE
+'C:/Users/User/Documents/project_3/food_delivery_capstone_v2/data/merged/order_item_merged.csv'
+INTO TABLE order_items_raw
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES
+(order_item_id, order_id, menu_code, quantity, unit_price, line_amount);
+
+LOAD DATA LOCAL INFILE
+'C:/Users/User/Documents/project_3/food_delivery_capstone_v2/data/merged/deliveries_merged.csv'
+INTO TABLE deliveries_raw
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES
+(delivery_id, order_id, courier_id, assign_time, drop_time, distance_km);
+
+
+-- Data Cleaning
+
+ -- Customers and couriers table
+create table couriers_raw_copy like couriers_raw;
+insert into couriers_raw_copy select * from couriers_raw;
+
+create table customers_raw_copy1 like customers_raw;
+insert into customers_raw_copy1 select * from customers_raw;
+
+select count(courier_id) from couriers_raw_copy
+where is_active is null;
+
+UPDATE customers_raw_copy1 -- deals with the future dates
+SET created_at = NOW()
+WHERE created_at > NOW();
+
+SELECT email, COUNT(*) -- checking for duplicate email values
+FROM customers_raw_copy1
+GROUP BY email
+HAVING COUNT(*) > 1;
+
+select * from customers_raw_copy1
+where customer_id is null
+or first_name is null
+or last_name is null
+or city is null
+or state is null
+or created_at is null;
+
+select * from couriers_raw_copy
+where courier_id is null
+or courier_name is null
+or vehicle_type is null
+or phone is null
+or city is null
+or state is null
+or is_active is null;
+
+select * from customers_raw_copy1
+where created_at > now();
+
+SELECT *
+FROM couriers_raw_copy
+WHERE phone NOT REGEXP '^[0-9]+$';
+
+UPDATE couriers_raw_copy
+SET is_active = CASE 
+                    WHEN is_active = 'yes' THEN TRUE
+                    WHEN is_active = 'no'  THEN FALSE
+                    ELSE is_active
+                END;
+
+UPDATE couriers_raw_copy
+SET phone = REGEXP_REPLACE(phone, '[^0-9]', '')
+WHERE phone NOT REGEXP '^[0-9]+$';
+
+SELECT DISTINCT is_active
+FROM couriers_raw_copy;
+
+select * from couriers_raw_copy limit 1000;
+
+UPDATE couriers_raw_copy
+SET is_active = CASE 
+                    WHEN LOWER(is_active) = 'yes' THEN TRUE
+                    WHEN LOWER(is_active) = 'no'  THEN FALSE
+                    ELSE is_active
+                END;
+desc couriers_raw_copy;
+
+UPDATE couriers_raw_copy
+SET is_active = CASE 
+                    WHEN LOWER(is_active) = 'yes' THEN 'TRUE'
+                    WHEN LOWER(is_active) = 'no'  THEN 'FALSE'
+                    ELSE is_active
+                END;
+                
+select * from couriers_raw_copy
+where vehicle_type is null;
+
+select * from couriers_raw_copy limit 100;
+
+UPDATE couriers_raw_copy
+SET 
+    courier_name = NULLIF(TRIM(courier_name), ''),
+    vehicle_type  = NULLIF(TRIM(vehicle_type), ''),
+    phone     = NULLIF(TRIM(phone), ''),
+    city     = NULLIF(TRIM(city), ''),
+    state      = NULLIF(TRIM(state), ''),
+    is_active = NULLIF(TRIM(is_active),'');
+    
+UPDATE couriers_raw_copy
+SET courier_name = 'Unknown'
+WHERE courier_name IS NULL;
+
+UPDATE couriers_raw_copy
+SET phone = 'Unknown'  
+WHERE phone IS NULL;
+
+UPDATE couriers_raw_copy
+SET city = 'Unknown'
+WHERE city IS NULL;
+
+UPDATE couriers_raw_copy
+SET state = 'Unknown'
+WHERE state IS NULL; 
+
+UPDATE couriers_raw_copy
+SET
+    is_active = CASE 
+                   WHEN is_active IS NULL THEN 'FALSE'  -- or TRUE, based on logic
+                   ELSE is_active
+                 END,
+    courier_name = CASE 
+                    WHEN courier_name IS NULL THEN 'Unknown'
+                    ELSE courier_name
+                  END,
+    phone = CASE 
+              WHEN phone IS NULL THEN 'Unknown'
+              ELSE phone
+            END,
+    city = CASE 
+             WHEN city IS NULL THEN 'Unknown'
+             ELSE city
+           END,
+    state = CASE 
+              WHEN state IS NULL THEN 'Unknown'
+              ELSE state
+            END
+    -- Add more columns if necessary
+; 
+
+select * from couriers_raw_copy limit 100;
+
+DELETE FROM couriers_raw_copy
+WHERE is_active = 'yes';  
+
+SELECT DISTINCT is_active, LENGTH(is_active) 
+FROM couriers_raw_copy
+WHERE LOWER(TRIM(is_active)) = 'yes';
+
+DELETE FROM couriers_raw_copy
+WHERE LOWER(TRIM(is_active)) = 'yes';
+
+SELECT is_active, HEX(is_active) 
+FROM couriers_raw_copy
+WHERE is_active LIKE '%yes%';
+
+UPDATE couriers_raw_copy
+SET is_active = 'FALSE'  -- Or 'TRUE' based on your logic
+WHERE HEX(TRIM(is_active)) LIKE '595345%';  -- This corresponds to 'YES' in hexadecimal
+
+SELECT * 
+FROM couriers_raw_copy
+WHERE HEX(TRIM(is_active)) LIKE '595345%';
+
+update couriers_raw_copy
+set is_active="True";
+
+select distinct is_active from couriers_raw_copy;
+
+select * from couriers_raw_copy
+where is_active=' ';
+
+select * from customers_raw_copy1
+where last_name=' ';
+
+select * from couriers_raw_copy limit 1000;
+
+select count(courier_id) from couriers_raw_copy
+where length(phone) != 10;
+
+UPDATE couriers_raw_copy
+SET phone = 'Unknown'  -- Or set to a valid placeholder number like '0000000000'
+WHERE LENGTH(phone) != 10;
+
+update couriers_raw_copy
+set vehicle_type="Unknown"
+where vehicle_type is null;
+
+delete from couriers_raw_copy
+where length(phone)!=10;
+
+
+select * from couriers_raw_copy limit 1000;
+select * from customers_raw copy1 limit 1000;
+
+select count(customer_id) from customers_raw_copy1
+where city=" ";
+SELECT *
+FROM customers_raw_copy1
+WHERE city IS NULL OR city = " ";
+
+
+select * from customers_raw_copy1 limit 1000;                
+select * from couriers_raw_copy limit 1000;
+
+-- order_items and deliveries
+
+-- Create a copy of the order_items_raw table
+CREATE TABLE order_items_raw_copy AS
+SELECT * FROM order_items_raw WHERE 1=0;
+
+-- Create a copy of the deliveries_raw table
+CREATE TABLE deliveries_raw_copy AS
+SELECT * FROM deliveries_raw WHERE 1=0;
+
+-- inserting the records into the copy table to perform operations
+INSERT INTO order_items_raw_copy
+SELECT * FROM order_items_raw
+LIMIT 1000;
+
+-- Insert 1000 records into the copy of deliveries_raw
+INSERT INTO deliveries_raw_copy
+SELECT * FROM deliveries_raw
+LIMIT 1000;
+
+---------------------------------------------------------------
+-- Step 1: REMOVE ORPHAN RECORDS
+---------------------------------------------------------------
+
+-- Remove orphan rows from order_items_raw_new_copy where order_id is marked as '__ORPHAN__'
+DELETE FROM order_items_raw_copy
+WHERE order_id = '__ORPHAN__';
+
+-- Remove orphan rows from deliveries_raw_copy where order_id is marked as '__ORPHAN__'
+DELETE FROM deliveries_raw_copy
+WHERE order_id = '__ORPHAN__';
+
+-- Remove orphan rows from deliveries_raw_copy where courier_id is marked as '__ORPHAN__'
+DELETE FROM deliveries_raw_copy
+WHERE courier_id = '__ORPHAN__';
+
+---------------------------------------------------------------
+-- Step 2: CHECK AND FIX INVALID DATA IN order_items_raw_new_copy
+---------------------------------------------------------------
+
+-- Fix non-numeric quantity by setting it to '0'
+UPDATE order_items_raw_copy
+SET quantity = '0'
+WHERE quantity NOT REGEXP '^[0-9]+$';
+
+-- Fix non-numeric unit_price by setting it to '0'
+UPDATE order_items_raw_copy
+SET unit_price = '0'
+WHERE unit_price NOT REGEXP '^[0-9]+(\.[0-9]+)?$';
+
+-- Fix non-numeric line_amount by setting it to '0'
+UPDATE order_items_raw_copy
+SET line_amount = '0'
+WHERE line_amount NOT REGEXP '^[0-9]+(\.[0-9]+)?$';
+
+-- Fix missing (NULL or empty) values for quantity
+UPDATE order_items_raw_copy
+SET quantity = '0'
+WHERE quantity IS NULL OR quantity = '';
+
+-- Fix missing (NULL or empty) values for unit_price
+UPDATE order_items_raw_copy
+SET unit_price = '0'
+WHERE unit_price IS NULL OR unit_price = '';
+
+-- Fix missing (NULL or empty) values for line_amount
+UPDATE order_items_raw_copy
+SET line_amount = '0'
+WHERE line_amount IS NULL OR line_amount = '';
+
+DELETE FROM order_items_raw_copy
+WHERE order_item_id not in (
+    SELECT * FROM (
+        SELECT MIN(order_item_id)
+        FROM order_items_raw_copy
+        GROUP BY order_id, menu_code, quantity, unit_price, line_amount
+    ) AS temp
+);
+
+
+---------------------------------------------------------------
+-- Step 4: ENSURE DATA TYPE CONSISTENCY IN order_items_raw_new_copy
+---------------------------------------------------------------
+
+-- Enforce data types for order_items_raw_new_copy columns
+ALTER TABLE order_items_raw_copy
+MODIFY COLUMN order_item_id VARCHAR(255),  -- Typically an ID field
+MODIFY COLUMN order_id VARCHAR(255),      -- Typically an ID field
+MODIFY COLUMN menu_code VARCHAR(50),      -- Menu code, assumed VARCHAR
+MODIFY COLUMN quantity INT,               -- Quantity, should be an integer
+MODIFY COLUMN unit_price DECIMAL(10,2),   -- Unit price, with decimals
+MODIFY COLUMN line_amount DECIMAL(10,2);  -- Line amount, with decimals
+
+---------------------------------------------------------------
+-- Step 5: CHECK AND FIX INVALID DATA IN deliveries_raw_copy
+---------------------------------------------------------------
+
+-- Fix non-numeric distance_km by setting it to '0'
+UPDATE deliveries_raw_copy
+SET distance_km = '0'
+WHERE distance_km NOT REGEXP '^[0-9]+(\.[0-9]+)?$';
+
+-- Fix missing (NULL or empty) values for distance_km
+UPDATE deliveries_raw_copy
+SET distance_km = '0'
+WHERE distance_km IS NULL OR distance_km = '';
+
+---------------------------------------------------------------
+-- Step 6: HANDLE DUPLICATES IN deliveries_raw_copy
+---------------------------------------------------------------
+
+DELETE FROM deliveries_raw_copy
+WHERE delivery_id NOT IN (
+    SELECT * FROM (
+        SELECT MIN(delivery_id)
+        FROM deliveries_raw_copy
+        GROUP BY order_id, courier_id, assign_time, drop_time, distance_km
+    ) AS temp
+);
+
+
+---------------------------------------------------------------
+-- Step 7: ENSURE DATA TYPE CONSISTENCY IN deliveries_raw_copy
+---------------------------------------------------------------
+
+-- Enforce data type for distance_km in deliveries_raw_copy
+ALTER TABLE deliveries_raw_copy
+MODIFY COLUMN delivery_id VARCHAR(255),     -- Typically an ID field
+MODIFY COLUMN order_id VARCHAR(255),         -- Typically an ID field
+MODIFY COLUMN courier_id VARCHAR(255),      -- Courier ID, typically VARCHAR
+MODIFY COLUMN assign_time DATETIME,         -- Timestamp for assign_time
+MODIFY COLUMN drop_time DATETIME,           -- Timestamp for drop_time
+MODIFY COLUMN distance_km DECIMAL(10,2);    -- Distance in km, with decimals
+
+---------------------------------------------------------------
+-- Step 8: RECHECK DATA AFTER CLEANING
+---------------------------------------------------------------
+
+-- Check for any remaining non-numeric values in order_items_raw_new_copy
+SELECT * FROM order_items_raw_copy WHERE quantity NOT REGEXP '^[0-9]+$' OR unit_price NOT REGEXP '^[0-9]+(\.[0-9]+)?$' OR line_amount NOT REGEXP '^[0-9]+(\.[0-9]+)?$';
+
+-- Check for any remaining NULL or empty values in order_items_raw_new_copy
+SELECT * FROM order_items_raw_copy WHERE quantity IS NULL OR quantity = '' OR unit_price IS NULL OR unit_price = '' OR line_amount IS NULL OR line_amount = '';
+
+-- Check for any remaining non-numeric values in deliveries_raw_copy
+SELECT * FROM deliveries_raw_copy WHERE distance_km NOT REGEXP '^[0-9]+(\.[0-9]+)?$';
+
+-- Check for any remaining NULL or empty values in deliveries_raw_copy
+SELECT * FROM deliveries_raw_copy WHERE distance_km IS NULL OR distance_km = '';
+
+
+-- Orders_merged
+
+CREATE TABLE orders_copy AS
+SELECT * FROM orders_raw;
+
+
+-- This query replaces empty strings ('') with NULL in the columns:
+UPDATE orders_copy
+SET 
+    customer_id = NULLIF(customer_id, ''),
+    restaurant_id = NULLIF(restaurant_id, ''),
+    city = NULLIF(city, ''),
+    state = NULLIF(state, '');
+    
+-- Cleaning order_datetime and converting it to proper format
+
+-- Add new column to store formatted date as original column contains uncleaned data
+ALTER TABLE orders_copy
+ADD COLUMN order_datetime_ts DATETIME(6);
+
+-- set null to rows where date not in proper format
+UPDATE orders_copy
+SET order_datetime_ts =
+    CASE
+        WHEN order_datetime REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+        THEN STR_TO_DATE(SUBSTRING_INDEX(order_datetime, '.', 1), '%Y-%m-%d %H:%i:%s')
+        ELSE NULL
+    END;
+
+-- Drop old column
+ALTER TABLE orders_copy
+DROP COLUMN order_datetime;
+-- Rename new column as it is in proper date format
+ALTER TABLE orders_copy
+CHANGE COLUMN order_datetime_ts order_datetime DATETIME;
+
+-- Add column futuredate flag to validate date
+ALTER TABLE orders_copy 
+ADD COLUMN future_date_flag INT DEFAULT 0;
+
+-- sets flag to 1 if order date is greater than current date
+UPDATE orders_copy
+SET future_date_flag = 1
+WHERE order_datetime > CURRENT_DATE;
+
+-- Cleaning status columns
+UPDATE orders_copy
+SET status = 
+    CASE
+        WHEN status = '' THEN NULL  
+        ELSE UPPER(TRIM(status))  
+    END;
+
+-- Cleaning city column
+UPDATE orders_copy
+SET city = 
+    CASE
+        WHEN city = '' THEN NULL
+        ELSE CONCAT(UPPER(SUBSTRING(city, 1, 1)), LOWER(SUBSTRING(city, 2)))  
+    END;
+    
+-- Cleaning state column
+UPDATE orders_copy
+SET state = 
+    CASE
+        WHEN state = '' THEN NULL
+        ELSE CONCAT(UPPER(SUBSTRING(state, 1, 1)), LOWER(SUBSTRING(state, 2))) 
+    END;
+
+
+SELECT *
+FROM orders_copy
+WHERE customer_id = '__ORPHAN__' 
+   OR restaurant_id = '__ORPHAN__' 
+   OR order_id = '__ORPHAN__' ;
+   
+-- Dropping rows having orphan values
+DELETE FROM orders_copy
+WHERE customer_id = '__ORPHAN__' 
+   OR restaurant_id = '__ORPHAN__' 
+   OR order_id = '__ORPHAN__';
+
+
+-- Set city and state to unknown when null
+UPDATE orders_copy
+SET city = IFNULL(city, 'Unknown');
+
+UPDATE orders_copy
+SET state = IFNULL(state, 'Unknown');
+
+-- Handling duplicate values of order_id
+SELECT order_id, COUNT(*)
+FROM orders_copy
+GROUP BY order_id
+HAVING COUNT(*) > 1;
+
+-- Deleting duplicate entries keeping only first occurance
+SELECT order_id, customer_id, restaurant_id, COUNT(*)
+FROM orders_copy
+GROUP BY order_id, customer_id, restaurant_id, order_datetime
+HAVING COUNT(*) > 1;
+
+
+CREATE TEMPORARY TABLE temp_order_stage AS
+SELECT *, 
+       ROW_NUMBER() OVER (PARTITION BY order_id, customer_id, restaurant_id, order_datetime ORDER BY order_id) AS row_num
+FROM orders_copy;
+
+DELETE o
+FROM orders_copy o
+JOIN temp_order_stage t ON o.order_id = t.order_id
+WHERE t.row_num > 1;
+
+DROP TEMPORARY TABLE temp_order_stage;
+-- Restaurant_merged
+
+CREATE TABLE restaurants_copy AS
+SELECT * FROM restaurants_raw;
+
+set sql_safe_updates = 0;
+
+-- replace blank with nulls
+UPDATE restaurants_copy
+SET 
+    restaurant_name = NULLIF(restaurant_name, ''),
+    cuisine = NULLIF(cuisine, ''),
+    city = NULLIF(city, ''),
+    state = NULLIF(state, ''),
+    rating = NULLIF(rating, ''),
+    is_active = NULLIF(is_active, '');
+
+-- Converting rating to numeric
+ALTER TABLE restaurants_copy
+ADD COLUMN rating_num NUMERIC(2,1);
+
+UPDATE restaurants_copy
+SET rating_num = 
+    CASE
+        WHEN rating REGEXP '^[0-9]+(\\.[0-9]+)?$' THEN CAST(rating AS DECIMAL(2,1))
+        ELSE NULL
+    END;
+
+ALTER TABLE restaurants_copy
+DROP COLUMN rating;
+
+ALTER TABLE restaurants_copy
+ADD COLUMN is_active_bool BOOLEAN;
+
+UPDATE restaurants_copy
+SET is_active_bool =
+    CASE
+        WHEN LOWER(is_active) IN ('True','true','t','1') THEN TRUE
+        WHEN LOWER(is_active) IN ('False','false','f','0') THEN FALSE
+        ELSE NULL
+    END;
+
+ALTER TABLE restaurants_copy DROP COLUMN is_active;
+ALTER TABLE restaurants_copy RENAME COLUMN is_active_bool TO is_active;
+
+desc restaurants_copy;
+
+-- Deleting duplicate entries from restaurant table
+
+SELECT restaurant_name, cuisine, city, state, COUNT(*)
+FROM restaurants_copy
+GROUP BY restaurant_name, cuisine, city, state
+HAVING COUNT(*) > 1;
+
+CREATE TEMPORARY TABLE temp_restaurants AS
+SELECT *, 
+       ROW_NUMBER() OVER (PARTITION BY restaurant_name, cuisine, city, state ORDER BY restaurant_id) AS row_num
+FROM restaurants_copy;
+
+set sql_safe_updates =0;
+DELETE r
+FROM restaurants_copy r
+JOIN temp_restaurants t
+ON r.restaurant_id = t.restaurant_id
+WHERE t.row_num > 1;
+
+DROP TEMPORARY TABLE temp_restaurants;
+
+-- Removing orphans
+SELECT *
+FROM restaurants_copy
+WHERE restaurant_id = '__ORPHAN__'
+   OR city = '__ORPHAN__'
+   OR state = '__ORPHAN__';
+
+ALTER TABLE restaurants_copy
+MODIFY COLUMN rating DECIMAL(2, 1);
+
+desc restaurants_raw_copy;
+desc orders_copy;
+
+show tables;
+
+rename table customers_raw_copy1 to customers_raw_copy;
+rename table orders_copy to orders_raw_copy;
+rename table restaurants_copy to restaurants_raw_copy;
+
+
+
+-- Analytical SQL Queries --
+
+-- Average Order Value (AOV)
+
+SELECT 
+    AVG(order_value) AS average_order_value
+FROM (
+    SELECT o.order_id, 
+           SUM(oi.line_amount) AS order_value
+    FROM orders_raw_copy o
+    JOIN order_items_raw_copy oi ON o.order_id = oi.order_id
+    GROUP BY o.order_id
+) AS order_values;
+
+
+-- Delivery Fulfillment Time and On-Time Rate
+
+-- Average Delivery Fulfillment Time
+SELECT 
+    AVG(TIMESTAMPDIFF(MINUTE, assign_time, drop_time)) AS avg_delivery_time_minutes
+FROM deliveries_raw_copy;
+
+-- On-Time Rate (Assuming a delivery is "on time" if drop_time is within 30 minutes of assigned time)
+SELECT 
+    (SUM(CASE WHEN TIMESTAMPDIFF(MINUTE, assign_time, drop_time) <= 30 THEN 1 ELSE 0 END) / COUNT(*)) * 100 AS on_time_rate
+FROM deliveries_raw_copy;
+
+-- Top Cuisines and Cities by Revenue
+
+-- Top Cuisines by Revenue
+SELECT 
+    r.cuisine,
+    SUM(oi.line_amount) AS total_revenue
+FROM order_items_raw_copy oi
+JOIN orders_raw_copy o ON oi.order_id = o.order_id
+JOIN restaurants_raw_copy r ON o.restaurant_id = r.restaurant_id
+GROUP BY r.cuisine
+ORDER BY total_revenue DESC
+LIMIT 10;
+
+desc restaurants_raw_copy;
+
+-- Top Cities by Revenue
+SELECT 
+    r.city,
+    SUM(oi.line_amount) AS total_revenue
+FROM order_items_raw_copy oi
+JOIN orders_raw_copy o ON oi.order_id = o.order_id
+JOIN restaurants_raw_copy r ON o.restaurant_id = r.restaurant_id
+GROUP BY r.city
+ORDER BY total_revenue DESC
+LIMIT 10;
+
+-- Courier Performance and Customer Retention Rates
+SELECT 
+    d.courier_id, 
+    c.courier_name, 
+    COUNT(d.delivery_id) AS total_deliveries
+FROM deliveries_raw_copy d
+JOIN couriers_raw_copy c ON d.courier_id = c.courier_id
+GROUP BY d.courier_id, c.courier_name
+ORDER BY total_deliveries DESC
+LIMIT 10;
+
+-- Customer Retention Rate (Percentage of Repeat Customers)
+SELECT 
+    (COUNT(DISTINCT CASE WHEN order_count > 1 THEN customer_id END) / COUNT(DISTINCT customer_id)) * 100 AS retention_rate
+FROM (
+    SELECT customer_id, COUNT(order_id) AS order_count
+    FROM orders_raw_copy
+    GROUP BY customer_id
+) AS customer_orders;
+
+-- Schema Validation – Validate Joins and Referential Relationships
+
+-- Validate Orders and Order Items Relationship:
+SELECT oi.order_item_id
+FROM order_items_raw_copy oi
+LEFT JOIN orders_raw_copy o ON oi.order_id = o.order_id
+WHERE o.order_id IS NULL;
+
+-- Validate Deliveries and Orders Relationship
+SELECT d.delivery_id
+FROM deliveries_raw_copy d
+LEFT JOIN orders_raw_copy o ON d.order_id = o.order_id
+WHERE o.order_id IS NULL;
+
+-- Validating couriers and deliveries relationship
+SELECT d.delivery_id
+FROM deliveries_raw_copy d
+LEFT JOIN couriers_raw_copy c ON d.courier_id = c.courier_id
+WHERE c.courier_id IS NULL;
+
+
+
+-- Data Warehousing + ETL Pipeline
+
+-- Dimensional Modeling (Table Creation)
+-- Dimension tables
+
+CREATE TABLE dim_customer (
+    customer_id VARCHAR(50) PRIMARY KEY,
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    gender VARCHAR(10),
+    email VARCHAR(255),
+    city VARCHAR(100),
+    state VARCHAR(100),
+    created_at TIMESTAMP,
+    valid_from TIMESTAMP,  
+    valid_to TIMESTAMP,    
+    current_flag BOOLEAN   
+);
+
+CREATE TABLE dim_restaurant (
+    restaurant_id VARCHAR(50) PRIMARY KEY,
+    restaurant_name VARCHAR(150),
+    cuisine VARCHAR(100),
+    city VARCHAR(100),
+    state VARCHAR(100),
+    rating FLOAT(2,1),
+    is_active BOOLEAN,
+    valid_from TIMESTAMP,  
+    valid_to TIMESTAMP,    
+    current_flag BOOLEAN   
+);
+
+CREATE TABLE dim_courier (
+    courier_id VARCHAR(50) PRIMARY KEY,
+    courier_name VARCHAR(100),
+    vehicle_type VARCHAR(50),
+    phone VARCHAR(20),  
+    city VARCHAR(100),
+    state VARCHAR(100),
+    is_active BOOLEAN,
+    valid_from TIMESTAMP, 
+    valid_to TIMESTAMP,    
+    current_flag BOOLEAN   
+);
+
+
+CREATE TABLE dim_date (
+    date_id DATE PRIMARY KEY,
+    day INT,
+    month INT,
+    year INT,
+    quarter INT,
+    week INT
+);
+
+CREATE TABLE dim_location (
+    location_id VARCHAR(50) PRIMARY KEY,
+    city VARCHAR(100),
+    state VARCHAR(100)
+);
+
+
+-- Fact tables
+
+CREATE TABLE fact_orders (
+    order_id VARCHAR(50) PRIMARY KEY,
+    customer_id VARCHAR(50),
+    restaurant_id VARCHAR(50),
+    date_id DATE,
+    total_amount DECIMAL(10,2),
+    quantity INT,
+    FOREIGN KEY (customer_id) REFERENCES dim_customer(customer_id),
+    FOREIGN KEY (restaurant_id) REFERENCES dim_restaurant(restaurant_id),
+    FOREIGN KEY (date_id) REFERENCES dim_date(date_id)
+);
+
+CREATE TABLE fact_deliveries (
+    delivery_id VARCHAR(50) PRIMARY KEY,
+    order_id VARCHAR(50),
+    courier_id VARCHAR(50),
+    delivery_date DATE,
+    distance_km DECIMAL(5,2),
+    delivery_time INT,  
+    FOREIGN KEY (order_id) REFERENCES fact_orders(order_id),
+    FOREIGN KEY (courier_id) REFERENCES dim_courier(courier_id),
+    FOREIGN KEY (delivery_date) REFERENCES dim_date(date_id)
+);
+
+
+-- ETL Development
+
+-- Full ETL
+
+-- Dim Customer
+-- Mask Email: Mask everything except the first 3 characters and domain
+UPDATE customers_raw_copy
+SET email = CONCAT(SUBSTRING(email, 1, 3), '***@***.com')
+WHERE email IS NOT NULL;
+
+-- Insert into dim_customer table with masked email
+INSERT IGNORE INTO dim_customer (customer_id, first_name, last_name, gender, email, city, state, created_at)
+SELECT 
+    customer_id, 
+    first_name, 
+    last_name, 
+    gender, 
+    CONCAT(SUBSTRING(email, 1, 3), '***@***.com') AS email,  -- Masked email
+    city, 
+    state, 
+    created_at 
+FROM customers_raw_copy;
+
+INSERT IGNORE INTO dim_restaurant 
+(
+    restaurant_id, 
+    restaurant_name, 
+    cuisine, 
+    city, 
+    state, 
+    rating, 
+    is_active, 
+    valid_from, 
+    valid_to, 
+    current_flag
+)
+SELECT 
+    restaurant_id, 
+    restaurant_name, 
+    cuisine, 
+    city, 
+    state, 
+    rating, 
+    is_active, 
+    CURRENT_TIMESTAMP AS valid_from,  
+    NULL AS valid_to,               
+    TRUE AS current_flag           
+FROM restaurants_raw_copy;
+
+INSERT IGNORE INTO dim_courier 
+(
+    courier_id, 
+    courier_name, 
+    vehicle_type, 
+    phone, 
+    city, 
+    state, 
+    is_active, 
+    valid_from, 
+    valid_to, 
+    current_flag
+)
+SELECT 
+    courier_id, 
+    courier_name, 
+    vehicle_type, 
+    CONCAT('***-***-', SUBSTRING(phone, -4)) AS phone,  
+    city, 
+    state, 
+    is_active, 
+    CURRENT_TIMESTAMP AS valid_from,  
+    NULL AS valid_to,                
+    TRUE AS current_flag            
+FROM couriers_raw_copy;
+
+select * from fact_deliveries;
+
