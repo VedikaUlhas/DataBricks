@@ -37,6 +37,31 @@ FROM emp e
 lEFT JOIN dept d
 on e.deptno=d.deptno
 UNION 
-select e.dname, d.dname
+select e.ename, d.dname
 FROM emp e
-right join 
+right join dept d
+on e.deptno=d.deptno;
+
+
+show databases;
+use cricketdb;
+
+show tables;
+select * from players;
+select * from batting;
+select * from bowling;
+
+select p.full_name,b.runs
+FROM players p
+INNER JOIN batting b
+ON p.player_id = b.player_id
+WHERE p.role = 'batsman' ;
+
+
+select p.full_name,b.runs,c.wickets
+FROM players p
+INNER JOIN batting b
+INNER JOIN bowling c
+ON p.player_id = b.player_id AND
+p.player_id = c.player_id
+WHERE p.role = 'bowler' ;
