@@ -1,124 +1,268 @@
--- Create duplicate table emp2 using emp
-create table emp2 as select  * from emp;
+create database day5;
+use day5;
+show tables;
 
 
-create table emp_10
-as select * from emp where deptno = 10; 
+CREATE TABLE customers (
+  customer_id INT PRIMARY KEY,
+  name VARCHAR(50),
+  city VARCHAR(50)
+);
 
-create table emp_skeleton
-as select * from emp where 1=2;
+CREATE TABLE stores (
+  store_id INT PRIMARY KEY,
+  store_name VARCHAR(50),
+  city VARCHAR(50)
+);
 
-select * from emp_10;
+CREATE TABLE products (
+  product_id INT PRIMARY KEY,
+  product_name VARCHAR(50),
+  category VARCHAR(50),
+  price DECIMAL(10,2)
+);
 
+CREATE TABLE orders (
+  order_id INT PRIMARY KEY,
+  customer_id INT,
+  product_id INT,
+  store_id INT,
+  quantity INT,
+  order_date DATE,
+  FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
+  FOREIGN KEY (product_id) REFERENCES products(product_id),
+  FOREIGN KEY (store_id) REFERENCES stores(store_id)
+);
 
+INSERT INTO customers VALUES
+(1,'Alice','Delhi'),
+(2,'Bob','Mumbai'),
+(3,'Charlie','Delhi'),
+(4,'David','Chennai');
 
-select * from emp_10;
-alter table emp_10 add column bonus decimal(10,2);
+INSERT INTO stores VALUES
+(1,'Delhi Central','Delhi'),
+(2,'Mumbai Mega','Mumbai'),
+(3,'Chennai Super','Chennai');
 
-insert into emp_10 values
-(3333,'AK','DATA ENGG',7902,'2025-11-20',9999,100,10,NULL,20);
+INSERT INTO products VALUES
+(1,'Laptop','Electronics',80000),
+(2,'Headphones','Electronics',2000),
+(3,'Shoes','Apparel',2500);
 
--- error due to unmatched no of cols
-select * from emp 
-union 
-select * from emp_10;
+INSERT INTO orders VALUES
+(101,1,1,1,1,'2024-10-10'),
+(102,2,2,2,2,'2024-10-11'),
+(103,1,3,1,1,'2024-10-12'),
+(104,3,1,3,1,'2024-10-13');
 
-select * from emp 
-union all
-select empno,ename,job,mgr,hiredate,sal,comm,
-deptno,aadhar_number
- from emp_10;
+INSERT INTO customers VALUES
+(1,'Alice','Delhi'),
+(2,'Bob','Mumbai'),
+(3,'Charlie','Delhi'),
+(4,'David','Chennai');
 
-USE cricketdb;
+INSERT INTO stores VALUES
+(1,'Delhi Central','Delhi'),
+(2,'Mumbai Mega','Mumbai'),
+(3,'Chennai Super','Chennai');
 
-select * from players;
+INSERT INTO products VALUES
+(1,'Laptop','Electronics',80000),
+(2,'Headphones','Electronics',2000),
+(3,'Shoes','Apparel',2500);
 
-select full_name, dob from players where dayofweek(dob) = 1
-OR dayofweek(dob) =7;
+INSERT INTO orders VALUES
+(101,1,1,1,1,'2024-10-10'),
+(102,2,2,2,2,'2024-10-11'),
+(103,1,3,1,1,'2024-10-12'),
+(104,3,1,3,1,'2024-10-13');
 
-use ltim;
+select * from orders;
 
-select * from sales;
-select * from products;
+select 
+o . *,
+row_number() over (partition by customer_id order by order_date)
+as order_no 
+from orders o;
 
-select * from sales
-where sale_date >= curdate() - interval 7 year;
+select * from orders;
 
+select 
+c.customer_id,
+c.name,
+sum(p.price * o.quantity) as total_spent,
+rank() over (order by sum(p.price * o.quantity) desc ) as spend_rank
+from customers c
+join orders o on c.customer_id =o.customer_id
+join products p on p.product_id=o.product_id
+group by c.customer_id,c.name;
 
-use ltim;
-select * from emp;
-select * from dept;
+insert into orders values
+(105,4,1,1,1,'2024-10-10'),
+(108,4,3,1,1,'2024-10-12');
 
--- updatable views
-create view v_emp_dept
-as
-select empno,ename,job,sal,emp.deptno,dname,loc
-from emp
-join dept on emp.deptno=dept.deptno;
+select 
+c.customer_id,
+c.name,
+sum(p.price * o.quantity) as total_spent,
+dense_rank() over (order by sum(p.price * o.quantity) desc ) as spend_rank
+from customers c
+join orders o on c.customer_id =o.customer_id
+join products p on p.product_id=o.product_id
+group by c.customer_id,c.name;
 
-desc v_emp_dept;
-select * from v_emp_dept;
+select 
+c.customer_id,
+c.name,
+sum(p.price * o.quantity) as total_spent,
+row_number() over (order by sum(p.price * o.quantity) desc ) as spend_rank
+from customers c
+join orders o on c.customer_id =o.customer_id
+join products p on p.product_id=o.product_id
+group by c.customer_id,c.name;
 
-set sql_safe_updates =0;
-update emp set sal =8888 where empno=7782; 
+select 
+order_id,
+customer_id,
+order_date,
+lag(order_date) over (partition by customer_id )
+as previous_order_date
+from orders;
 
-update v_emp_dept set sal =9999 where empno=7782; 
-select * from emp;
+select 
+order_id,
+customer_id,
+product_id,
+lead(product_id) over (partition by customer_id order by order_date)
+as next_product
+from orders;
+select product_id,product_name,category,price,
+rank() over (partition by category order by price desc) 
+as rnk from products;
 
+select * from 
+(select product_id,product_name,category,price,
+rank() over (partition by category order by price desc) 
+as rnk from products
+) t
+where rnk =1;
 
-create or replace view v_emp_dept
-as
-select  empno,ename,job,sal,emp.deptno,dname,loc
-from emp
-join dept on emp.deptno=dept.deptno
-where emp.deptno=10
-with check option;
-
-select * from v_emp_dept;
-update v_emp_dept set sal =9999 where empno=7782; 
-
-select * from emp;
-
--- unupdatable views
-create or replace view v_emp_dept
-as
-select distinct  empno,ename,job,sal,emp.deptno,dname,loc
-from emp
-join dept on emp.deptno=dept.deptno;
+select 
+product_id,
+product_name,
+price,
+case 
+when price>50000 then 'Premium'
+when price<5000 then 'Budget'
+else 'Standard'
+end
+as price_category
+from products;
 
 use cricketdb;
 
--- Creating user in db
+select* from players;
 
-create user
-'cricket_admin'@'localhost'
-identified by 'P@55w0rd';
 
-create user 'trainer'@'%'
-identified by 'P@55w0rd';
+select * from(
+select full_name, country, dob,
+rank() over(partition by country order by dob desc) as rnk
+from players
+) t
+where rnk  =1;
 
--- granting privileges
--- full privileges
-grant all privileges on cricket_db.* to 'cricket_admin'@'localhost';
+select full_name,country,dob
+from players p
+where dob = (
+select max(dob) from players where country=p.country);
 
--- read only user for trainees
-grant select on cricket_db.* to 'trainer'@'%';
+select p1.full_name,p1.country,p1.dob from players p1
+where p1.dob = (select max(p2.dob) from
+ players p2 where p1.country=p2.country);
+ 
+ 
+select * from orders;
 
--- grant specific permissions
-grant select,insert, update on players to 'trainer'@'%';
+select order_id,quantity,order_date from orders
+where order_date =
+(select max(order_date) from orders);
 
--- revoke privileges
-revoke insert, update on players from 'trainer'@'%';
+select customer_id,order_id,quantity,order_date 
+from orders o
+where order_date = 
+(select max(order_date) from orders
+ where customer_id=o.customer_id)
+ order by customer_id;
+ 
+ DELIMITER //
+CREATE FUNCTION total_price(qty INT, price DECIMAL(10,2))
+RETURNS DECIMAL(10,2)
+DETERMINISTIC
+BEGIN
+    RETURN qty * price;
+END //
+DELIMITER ;
 
--- show privileges
-show grants for 'trainer'@'%';
 
-use ltim;
-select * from emp;
+SELECT total_price(quantity, order_id) FROM orders;
 
-create index idx_ename
-on emp(ename);
+DELIMITER //
+CREATE PROCEDURE get_customer_orders(IN cid INT)
+BEGIN
+    SELECT order_id, product_id, quantity
+    FROM orders
+    WHERE customer_id = cid;
+END //
+DELIMITER ;
 
-show index from emp;
+CALL get_customer_orders(3);
 
-select * from information_schema.statistics;
+DELIMITER//
+CREATE FUNCTION tds_deduction(sal decimal(10,2))
+RETURNS DECIMAL (10,2)
+DETERMINISTIC
+BEGIN
+	RETURN sal*0.1;
+END//
+DELIMITER;
+
+
+CREATE TABLE order_audit (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT,
+    action_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+delimiter $$
+
+create trigger trg_order_insert
+after insert on orders
+for each row
+begin
+	insert into order_audit(order_id) values (new.order_id);
+end $$
+
+delimiter ;
+
+select * from order_audit;
+insert into order_audit  values (107,NULL,NULL);
+
+delimiter $$
+create trigger chech_price
+before insert on products
+for each row
+begin
+	if new.price <=0 then
+    signal sqlstate '45000'
+    set message_text = 'Price must be greater than 0';
+    end if;
+end $$
+delimiter ;
+
+
+desc products;
+insert into products values (5,'ABC','Mobile',0);
+
