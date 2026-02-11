@@ -1,0 +1,19 @@
+import java.util.*;
+
+public class Addition{
+    public static void main(String [] args){
+        Scanner sc = new Scanner(System.in);
+        int numA = sc.nextInt();
+        int numB = sc.nextInt();
+        int sumResult = numA+numB;
+
+        if(sumResult > 100){
+            System.out.println("Result is larger number");
+        }
+        else{
+            System.out.println("Result is small number");
+        }
+
+        System.out.println("Sum is : "+sumResult);
+    }
+}

@@ -1,0 +1,51 @@
+PROGRAM ATMTransactionsSystem:
+Insert card;
+Enter Pin;
+Set limit =3;
+if(limit <=0):
+Block account;
+END IF
+if(Pin is valid):
+THEN Enter amount to withdrawl ;
+If (withdrawl amount <remaining balance):
+THEN Withdraw successfully;
+Available balance = Available balance - withdrawll amount
+Displayavailable balance
+END IF
+ELSE
+limit --;
+END If
+
+
+
+PROGRAM LibraryManagementSystem:
+Request for Book;
+if(Bokk is available):
+THEN lend the book;
+Add book name, library card id, and borrow date;
+ELSE:
+Book not available
+If (Book return):
+IF(Return Date <= Assigned return Date):
+THEN Return Successful;
+Update book availability;
+ENF if;
+ELSE :
+Return Date Excedded Add Fine;
+IF(Book is reserved and its availabe):
+THEN Notify Book availability to user;
+END if ;
+END;
+
+
+PROGRAM OnlineShoppingCart:
+Create a cart;
+Add itemName, quantity, unitPrice;
+Calculate lineTotal = quantity * unitPrice;
+Calculate grandTotal = grandTotal+lineTotal;
+IF (GrandTotal>=DiscountAvailingAmount):
+THEN Discount = GrandTotal *(Discount %);
+GrandTotal = GrandTotal -Discount;
+FinalTotal = GrandTotal + Shipping Fees
+Display Final Total
+END;
